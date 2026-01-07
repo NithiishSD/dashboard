@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GitHub DevOps Dashboard — Nithiish S D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* ====== Base & Variables ====== */
+    :root {
+      --bg: #0b0f14;
+      --panel: #121822;
+      --text: #e6f1ff;
+      --muted: #9fb3c8;
+      --accent: #6cf1ff;
+      --accent-2: #9d6cff;
+      --success: #3ddc97;
+      --warn: #ffb703;
+      --danger: #ff4d6d;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 14px;
+      --grid-gap: 18px;
+      --glow: 0 0 12px rgba(108, 241, 255, 0.35);
+    }
+
+    /* Mood themes (auto-switched by JS) */
+    .theme-calm {
+      --bg: #0b0f14;
+      --panel: #121822;
+      --accent: #6cf1ff;
+      --accent-2: #9d6cff;
+      --success: #3ddc97;
+    }
+    .theme-focus {
+      --bg: #0c1018;
+      --panel: #141a26;
+      --accent: #7af0c9;
+      --accent-2: #ffd166;
+      --success: #06d6a0;
+    }
+    .theme-alert {
+      --bg: #120d0f;
+      --panel: #1a1214;
+      --accent: #ff6b6b;
+      --accent-2: #ffd166;
+      --success: #4cc9f0;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 600px at 80% -20%, rgba(157,108,255,0.15), transparent 60%),
+                  radial-gradient(900px 500px at -10% 120%, rgba(108,241,255,0.12), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 28px;
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(18,24,34,0.85), rgba(18,24,34,0.55));
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand .logo {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: var(--glow);
+    }
+    .brand h1 {
+      font-size: 18px; margin: 0;
+      letter-spacing: 0.4px;
+    }
+    .brand .subtitle {
+      font-size: 12px; color: var(--muted);
+    }
+
+    .controls {
+      display: flex; gap: 12px; align-items: center;
+    }
+    .btn {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.2s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--glow); }
+
+    main {
+      padding: 26px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: var(--grid-gap);
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .panel h2 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      letter-spacing: 0.3px;
+    }
+    .panel .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+
+    /* Grid sections */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--grid-gap); }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--grid-gap); }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--grid-gap); }
+    .grid-1 { display: grid; grid-template-columns: 1fr; gap: var(--grid-gap); }
+
+    /* Cards */
+    .card {
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(400px 200px at 110% -10%, rgba(108,241,255,0.08), transparent 60%);
+      pointer-events: none;
+    }
+    .card h3 { margin: 0 0 8px 0; font-size: 14px; }
+    .metric { font-size: 26px; font-weight: 600; }
+    .sub { color: var(--muted); font-size: 12px; }
+
+    /* Gauges & bars */
+    .gauge {
+      height: 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .gauge > span {
+      display: block; height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    .bar {
+      height: 8px; border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .bar > span {
+      display: block; height: 100%;
+      background: var(--success);
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    /* Timeline */
+    .timeline {
+      display: grid; gap: 10px;
+    }
+    .event {
+      display: grid; grid-template-columns: 120px 1fr auto; gap: 10px;
+      align-items: center;
+      padding: 10px; border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .event .status {
+      padding: 6px 10px; border-radius: 999px; font-size: 12px;
+      background: rgba(255,255,255,0.06);
+    }
+    .status.success { color: var(--success); border: 1px solid var(--success); }
+    .status.fail { color: var(--danger); border: 1px solid var(--danger); }
+
+    /* Badges & gamification */
+    .badges { display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+    }
+    .badge .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .xp {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    }
+    .level {
+      font-size: 12px; color: var(--muted);
+    }
+
+    /* Leaderboard & lists */
+    .list { display: grid; gap: 10px; }
+    .row {
+      display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center;
+      padding: 8px; border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+
+    /* Repo cards */
+    .repo-card {
+      display: grid; gap: 8px;
+    }
+    .repo-meta {
+      display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 20px 26px; color: var(--muted);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      margin-top: 20px;
+    }
+
+    /* Micro-interactions */
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(108,241,255,0.5); }
+      70% { box-shadow: 0 0 0 12px rgba(108,241,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(108,241,255,0); }
+    }
+    .spin { animation: spin 6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr; }
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body class="theme-calm">
+  <header>
+    <div class="brand">
+      <div class="logo pulse"></div>
+      <div>
+        <h1> — GitHub  Dashboard</h1>
+        <div class="subtitle">Analytics • Velocity • Reliability • Security</div>
+      </div>
+    </div>
+    <div class="controls">
+      <input class="btn" id="userInput" placeholder="GitHub username" style="min-width:180px;">
+      <input class="btn" id="tokenInput" placeholder="PAT (optional)" style="min-width:220px;">
+      <button class="btn" id="loadBtn">Load</button>
+      <button class="btn" id="themeBtn">Toggle Theme</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== Overview Panel ===== -->
+    <section class="panel">
+      <h2>Overview</h2>
+      <div class="desc">Quick health snapshot—velocity, PR funnel, deployments, and security posture.</div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Velocity meter</h3>
+          <div class="metric" id="velocityMetric">—</div>
+          <div class="gauge"><span id="velocityGauge"></span></div>
+          <div class="sub">Target: 25 commits/week</div>
+        </div>
+        <div class="card">
+          <h3>PR funnel</h3>
+          <div class="list" id="prFunnel"></div>
+          <div class="sub">Open → Reviewed → Merged</div>
+        </div>
+        <div class="card">
+          <h3>Security radar</h3>
+          <div class="badges" id="securityBadges"></div>
+          <div class="sub">Dependabot alerts by severity</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Repo Explorer ===== -->
+    <section class="panel">
+      <h2>Repo explorer</h2>
+      <div class="desc">Your repositories at a glance—stars, forks, watchers, languages, last commit.</div>
+      <div class="grid-4" id="repoGrid"></div>
+    </section>
+
+    <!-- ===== Analytics Performance ===== -->
+    <section class="panel">
+      <h2>Analytics performance</h2>
+      <div class="desc">Contributors, code quality, and issue resolution speed.</div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Top 5 active repos (30d)</h3>
+          <div class="list" id="topRepos"></div>
+        </div>
+        <div class="card">
+          <h3>Contributor leaderboard</h3>
+          <div class="list" id="leaderboard"></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Issue resolution speed</h3>
+          <div class="metric" id="issueSpeed">—</div>
+          <div class="sub">Median time-to-close across repos</div>
+        </div>
+        <div class="card">
+          <h3>Top languages</h3>
+          <div class="badges" id="topLangs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== DevOps Visibility ===== -->
+    <section class="panel">
+      <h2>DevOps visibility</h2>
+      <div class="desc">CI/CD pipeline, coverage, workflow success, and incidents.</div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Workflow success</h3>
+          <div class="metric" id="workflowSuccess">—</div>
+          <div class="bar"><span id="workflowBar"></span></div>
+          <div class="sub">GitHub Actions (7-day)</div>
+        </div>
+        <div class="card">
+          <h3>Test coverage</h3>
+          <div class="metric" id="coverageMetric">—</div>
+          <div class="gauge"><span id="coverageGauge"></span></div>
+          <div class="sub">Target: 80%+</div>
+        </div>
+        <div class="card">
+          <h3>Pipeline flow</h3>
+          <div class="list" id="pipelineFlow"></div>
+        </div>
+      </div>
+      <div class="grid-1">
+        <div class="card">
+          <h3>Deployment timeline</h3>
+          <div class="timeline" id="deployTimeline"></div>
+        </div>
+      </div>
+      <div class="grid-1">
+        <div class="card">
+          <h3>Incident log</h3>
+          <div class="list" id="incidentLog"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Gamification & Mood ===== -->
+    <section class="panel">
+      <h2>Gamification & mood</h2>
+      <div class="desc">Levels, XP, streaks, quests, and mood-based theme switching.</div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Level & XP</h3>
+          <div class="xp">
+            <div>
+              <div class="metric" id="levelMetric">Lv. —</div>
+              <div class="level" id="xpLabel">— / 100 XP</div>
+            </div>
+            <div class="gauge"><span id="xpGauge"></span></div>
+          </div>
+          <div class="badges" id="earnedBadges" style="margin-top:10px;"></div>
+        </div>
+        <div class="card">
+          <h3>Streak & quests</h3>
+          <div class="metric" id="streakMetric">🔥 —</div>
+          <div class="list" id="quests"></div>
+        </div>
+      </div>
+      <div class="grid-1">
+        <div class="card">
+          <h3>Mood theme</h3>
+          <div class="list">
+            <div class="row">
+              <div class="avatar spin"></div>
+              <div>Current mood: <strong id="moodLabel">Calm</strong></div>
+              <div><button class="btn" id="recalcMood">Recalculate</button></div>
+            </div>
+          </div>
+          <div class="sub">Theme auto-switches based on health score (velocity, success rate, incidents).</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Built by YourName • Multi-repo GitHub DevOps Dashboard • v1.0
+  </footer>
+
+  <script>
+    // ===== Config =====
+    let GH_USER = ""; // set via input
+    let GH_TOKEN = ""; // optional PAT for higher rate limits/private data
+
+    const headers = () => GH_TOKEN ? { Authorization: "Bearer " + GH_TOKEN } : {};
+
+    // ===== Utilities =====
+    const el = (id) => document.getElementById(id);
+    const setGauge = (id, pct) => el(id).style.width = Math.max(0, Math.min(100, pct)) + "%";
+    const setBar = (id, pct, color) => {
+      const bar = el(id);
+      bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+      if (color) bar.style.background = color;
+    };
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    // ===== Fetch helpers =====
+    async function gh(url) {
+      const res = await fetch(url, { headers: headers() });
+      if (!res.ok) throw new Error("GitHub API error: " + res.status + " " + url);
+      return res.json();
+    }
+
+    async function listRepos(user) {
+      const repos = [];
+      let page = 1;
+      while (true) {
+        const batch = await gh(`https://api.github.com/users/${user}/repos?per_page=100&page=${page}`);
+        repos.push(...batch);
+        if (batch.length < 100) break;
+        page++;
+      }
+      return repos;
+    }
+
+    async function repoStats(owner, repo) {
+      // Commit activity (last 52 weeks)
+      let commitActivity = [];
+      try {
+        commitActivity = await gh(`https://api.github.com/repos/${owner}/${repo}/stats/commit_activity`);
+      } catch {}
+      // Pulls
+      let pullsOpen = [];
+      try {
+        pullsOpen = await gh(`https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=100`);
+      } catch {}
+      let pullsClosed = [];
+      try {
+        pullsClosed = await gh(`https://api.github.com/repos/${owner}/${repo}/pulls?state=closed&per_page=100`);
+      } catch {}
+      // Issues
+      let issues = [];
+      try {
+        issues = await gh(`https://api.github.com/repos/${owner}/${repo}/issues?state=all&per_page=100`);
+      } catch {}
+      // Languages
+      let languages = {};
+      try {
+        languages = await gh(`https://api.github.com/repos/${owner}/${repo}/languages`);
+      } catch {}
+      // Actions workflow runs (last 7 days)
+      let runs = [];
+      try {
+        const r = await gh(`https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=100`);
+        runs = r.workflow_runs || [];
+      } catch {}
+      // Deployments
+      let deployments = [];
+      try {
+        deployments = await gh(`https://api.github.com/repos/${owner}/${repo}/deployments?per_page=50`);
+      } catch {}
+
+      return { commitActivity, pullsOpen, pullsClosed, issues, languages, runs, deployments };
+    }
+
+    // ===== Aggregation =====
+    async function aggregateAll(user) {
+      const repos = await listRepos(user);
+      const selected = repos.slice(0, 50); // safety cap
+      const agg = {
+        repos,
+        totalCommits30d: 0,
+        weeklyVelocity: 0,
+        prOpen: 0, prMerged30d: 0, prReviewed30d: 0,
+        issuesAll: 0, issueCloseTimes: [],
+        languages: {},
+        workflowSuccess7d: { success: 0, total: 0 },
+        deployments: [],
+        incidents: [],
+        contributors: {}, // name -> commits
+        repoActivity: [], // {name, commits30d, stars, forks, watchers, lastPush}
+      };
+
+      for (const r of selected) {
+        const stats = await repoStats(user, r.name);
+        // Commits: last 4 weeks
+        const last4 = (stats.commitActivity || []).slice(-4);
+        const commits4w = last4.reduce((sum, w) => sum + (w.total || 0), 0);
+        agg.totalCommits30d += commits4w;
+        agg.weeklyVelocity += (last4.length ? Math.round(commits4w / last4.length) : 0);
+
+        // PRs
+        agg.prOpen += (stats.pullsOpen || []).length;
+        const mergedClosed = (stats.pullsClosed || []).filter(p => p.merged_at);
+        agg.prMerged30d += mergedClosed.length;
+        agg.prReviewed30d += Math.min((stats.pullsOpen || []).length, Math.round(((stats.pullsOpen || []).length) * 0.6)); // heuristic
+
+        // Issues close time (approx: use closed issues with closed_at - created_at)
+        const closedIssues = (stats.issues || []).filter(i => i.state === "closed" && i.closed_at && i.created_at);
+        closedIssues.forEach(i => {
+          const t = (new Date(i.closed_at) - new Date(i.created_at)) / (1000 * 60 * 60);
+          if (t > 0) agg.issueCloseTimes.push(t);
+        });
+        agg.issuesAll += (stats.issues || []).length;
+
+        // Languages
+        Object.entries(stats.languages || {}).forEach(([lang, bytes]) => {
+          agg.languages[lang] = (agg.languages[lang] || 0) + bytes;
+        });
+
+        // Actions runs (7-day success rate)
+        const recentRuns = (stats.runs || []).filter(run => {
+          const d = new Date(run.created_at);
+          return (Date.now() - d.getTime()) < 7 * 24 * 60 * 60 * 1000;
+        });
+        recentRuns.forEach(run => {
+          agg.workflowSuccess7d.total += 1;
+          if (run.conclusion === "success") agg.workflowSuccess7d.success += 1;
+          if (run.conclusion && run.conclusion !== "success") {
+            agg.incidents.push({ id: run.id, title: run.name || "Workflow", severity: "moderate", when: run.created_at });
+          }
+        });
+
+        // Deployments
+        (stats.deployments || []).forEach(d => {
+          agg.deployments.push({
+            time: d.created_at || d.updated_at || "—",
+            env: (d.environment || "env"),
+            status: (d.statuses && d.statuses[0] && d.statuses[0].state) || "success"
+          });
+        });
+
+        // Contributors (approx via commit activity weeks)
+        (stats.commitActivity || []).slice(-4).forEach(w => {
+          // API doesn’t include per-author here; we simulate a single-user repo contribution
+          agg.contributors[user] = (agg.contributors[user] || 0) + (w.total || 0);
+        });
+
+        // Repo activity card
+        agg.repoActivity.push({
+          name: r.name,
+          commits30d: commits4w,
+          stars: r.stargazers_count || 0,
+          forks: r.forks_count || 0,
+          watchers: r.watchers_count || 0,
+          lastPush: r.pushed_at ? new Date(r.pushed_at).toLocaleString() : "—",
+          primaryLang: r.language || "—"
+        });
+
+        // Be kind to rate limits
+        await sleep(200);
+      }
+
+      // Finalize aggregates
+      agg.weeklyVelocity = Math.round(agg.weeklyVelocity / Math.max(1, selected.length));
+      const medianIssueHours = agg.issueCloseTimes.sort((a,b)=>a-b)[Math.floor(agg.issueCloseTimes.length/2)] || 0;
+      agg.issueMedianHours = Math.round(medianIssueHours);
+
+      // Languages top
+      const totalLangBytes = Object.values(agg.languages).reduce((a,b)=>a+b,0);
+      agg.topLanguages = Object.entries(agg.languages)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,6)
+        .map(([lang, bytes]) => ({ lang, pct: Math.round((bytes/totalLangBytes)*100) }));
+
+      // Workflow success rate
+      agg.workflowSuccessRate = agg.workflowSuccess7d.total
+        ? Math.round((agg.workflowSuccess7d.success / agg.workflowSuccess7d.total) * 100)
+        : 0;
+
+      // Coverage (placeholder—replace with your badge/API)
+      agg.coverage = 75; // set from your CI coverage source
+
+      // Security (placeholder—Dependabot requires org/repo scope)
+      agg.security = { critical: 0, high: 1, moderate: 3, low: 5 };
+
+      // Gamification
+      agg.gamification = computeGamification(agg);
+
+      return agg;
+    }
+
+    // ===== Gamification logic =====
+    function computeGamification(agg) {
+      const xp = Math.min(100, Math.round(
+        (agg.totalCommits30d * 0.4) +
+        (agg.prMerged30d * 1.2) +
+        (Math.max(0, 85 - agg.issueMedianHours) * 0.2) +
+        (agg.workflowSuccessRate * 0.2)
+      ));
+      const level = Math.max(1, Math.floor(xp / 20));
+      const streakDays = Math.min(30, Math.round(agg.weeklyVelocity / 3) + 2);
+
+      const badges = [];
+      if (agg.repos.length >= 10) badges.push({ name: "Repo Ranger", color: "var(--accent)" });
+      if (agg.prMerged30d >= 10) badges.push({ name: "Merge Master", color: "var(--success)" });
+      if (agg.workflowSuccessRate >= 85) badges.push({ name: "CI Guardian", color: "var(--warn)" });
+      if (streakDays >= 7) badges.push({ name: "Commit Streaker", color: "var(--accent-2)" });
+
+      const quests = [
+        { title: "Close 5 issues", progress: Math.min(5, Math.round(agg.issueCloseTimes.length / 2)), total: 5 },
+        { title: "Hit 85% coverage", progress: agg.coverage, total: 85 },
+        { title: "3 green deploys in a row", progress: Math.min(3, agg.deployments.filter(d=>d.status==="success").length), total: 3 },
+      ];
+
+      return { xp, level, streakDays, badges, quests };
+    }
+
+    // ===== Mood theme =====
+    function computeHealthScore(agg) {
+      const v = Math.min(1, agg.weeklyVelocity / 25);
+      const w = agg.workflowSuccessRate / 100;
+      const incPenalty = Math.min(1, agg.incidents.length * 0.1);
+      const coverage = Math.min(1, agg.coverage / 85);
+      const score = (0.35 * v) + (0.35 * w) + (0.2 * coverage) - (0.25 * incPenalty);
+      return Math.max(0, Math.min(1, score));
+    }
+    function applyMoodThemeFromAgg(agg) {
+      const score = computeHealthScore(agg);
+      let mood = "Calm", theme = "theme-calm";
+      if (score >= 0.75) { mood = "Focus"; theme = "theme-focus"; }
+      else if (score < 0.45) { mood = "Alert"; theme = "theme-alert"; }
+      document.body.className = theme;
+      el("moodLabel").textContent = mood;
+    }
+
+    // ===== Renderers =====
+    function renderOverview(agg) {
+      el("velocityMetric").textContent = `${agg.weeklyVelocity}/wk`;
+      setGauge("velocityGauge", (agg.weeklyVelocity / 25) * 100);
+
+      el("prFunnel").innerHTML = `
+        <div class="row"><div class="avatar"></div><div>Open</div><div>${agg.prOpen}</div></div>
+        <div class="row"><div class="avatar"></div><div>Reviewed</div><div>${agg.prReviewed30d}</div></div>
+        <div class="row"><div class="avatar"></div><div>Merged</div><div>${agg.prMerged30d}</div></div>
+      `;
+
+      const sec = agg.security;
+      el("securityBadges").innerHTML = Object.entries(sec).map(([sev, count]) => `
+        <span class="badge"><span class="dot" style="background:${sev === "critical" ? "var(--danger)" :
+          sev === "high" ? "var(--warn)" : "var(--accent)"}"></span>${sev}: ${count}</span>
+      `).join("");
+    }
+
+    function renderRepoExplorer(agg) {
+      el("repoGrid").innerHTML = agg.repoActivity.map(r => `
+        <div class="card repo-card">
+          <h3>${r.name}</h3>
+          <div class="repo-meta">
+            <span>⭐ ${r.stars}</span>
+            <span>🍴 ${r.forks}</span>
+            <span>👀 ${r.watchers}</span>
+            <span>⌛ ${r.lastPush}</span>
+            <span>🧠 ${r.primaryLang}</span>
+          </div>
+          <div class="bar"><span style="width:${Math.min(100, r.commits30d*4)}%"></span></div>
+          <div class="sub">${r.commits30d} commits (30d)</div>
+        </div>
+      `).join("");
+    }
+
+    function renderAnalytics(agg) {
+      const top = [...agg.repoActivity].sort((a,b)=>b.commits30d - a.commits30d).slice(0,5);
+      el("topRepos").innerHTML = top.map((r,i) => `
+        <div class="row">
+          <div class="avatar"></div>
+          <div>${i+1}. ${r.name}</div>
+          <div>${r.commits30d} commits</div>
+        </div>
+      `).join("");
+
+      const contributors = Object.entries(agg.contributors).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      el("leaderboard").innerHTML = contributors.map(([name, commits], i) => `
+        <div class="row">
+          <div class="avatar"></div>
+          <div>${i+1}. ${name}</div>
+          <div>${commits} commits</div>
+        </div>
+      `).join("");
+
+      el("issueSpeed").textContent = `${agg.issueMedianHours} hrs median`;
+
+      el("topLangs").innerHTML = agg.topLanguages.map(l => `
+        <span class="badge"><span class="dot"></span>${l.lang} — ${l.pct}%</span>
+      `).join("");
+    }
+
+    function renderDevOps(agg) {
+      el("workflowSuccess").textContent = `${agg.workflowSuccessRate}%`;
+      setBar("workflowBar", agg.workflowSuccessRate, agg.workflowSuccessRate >= 85 ? "var(--success)" : "var(--warn)");
+
+      el("coverageMetric").textContent = `${agg.coverage}%`;
+      setGauge("coverageGauge", agg.coverage);
+
+      // Pipeline flow (summary)
+      el("pipelineFlow").innerHTML = `
+        <div class="row"><div class="avatar"></div><div>Build</div><div class="status ${agg.workflowSuccessRate>=85?'success':'fail'}">${agg.workflowSuccessRate>=85?'healthy':'needs attention'}</div></div>
+        <div class="row"><div class="avatar"></div><div>Test</div><div class="status ${agg.coverage>=80?'success':'fail'}">${agg.coverage>=80?'good':'low coverage'}</div></div>
+        <div class="row"><div class="avatar"></div><div>Deploy</div><div class="status ${agg.deployments.filter(d=>d.status==='success').length>=3?'success':'fail'}">${agg.deployments.filter(d=>d.status==='success').length} green</div></div>
+      `;
+
+      el("deployTimeline").innerHTML = agg.deployments.slice(-10).reverse().map(d => `
+        <div class="event">
+          <div>${d.time}</div>
+          <div>${d.env.toUpperCase()} release</div>
+          <div class="status ${d.status === "success" ? "success" : "fail"}">${d.status}</div>
+        </div>
+      `).join("");
+
+      el("incidentLog").innerHTML = agg.incidents.slice(-10).reverse().map(i => `
+        <div class="row">
+          <div class="avatar"></div>
+          <div>#${i.id} — ${i.title} (${i.severity})</div>
+          <div>${new Date(i.when).toLocaleString()}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderGamification(agg) {
+      const g = agg.gamification;
+      el("levelMetric").textContent = `Lv. ${g.level}`;
+      el("xpLabel").textContent = `${g.xp} / 100 XP`;
+      setGauge("xpGauge", (g.xp / 100) * 100);
+
+      el("earnedBadges").innerHTML = g.badges.map(b => `
+        <span class="badge"><span class="dot" style="background:${b.color}"></span>${b.name}</span>
+      `).join("");
+
+      el("streakMetric").textContent = `🔥 ${g.streakDays}-day streak`;
+
+      el("quests").innerHTML = g.quests.map(q => {
+        const pct = Math.round((q.progress / q.total) * 100);
+        return `
+          <div class="row">
+            <div class="avatar"></div>
+            <div>${q.title}</div>
+            <div style="min-width:120px;">
+              <div class="bar"><span style="width:${pct}%; background:${pct >= 100 ? 'var(--success)' : 'var(--accent)'}"></span></div>
+              <div class="sub">${q.progress} / ${q.total}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderAll(agg) {
+      renderOverview(agg);
+      renderRepoExplorer(agg);
+      renderAnalytics(agg);
+      renderDevOps(agg);
+      renderGamification(agg);
+      applyMoodThemeFromAgg(agg);
+    }
+
+    // ===== Controls =====
+    document.getElementById("loadBtn").addEventListener("click", async () => {
+      GH_USER = el("userInput").value.trim();
+      GH_TOKEN = el("tokenInput").value.trim();
+      if (!GH_USER) { alert("Enter your GitHub username."); return; }
+      try {
+        const agg = await aggregateAll(GH_USER);
+        renderAll(agg);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to load data. If you have private repos or hit rate limits, add a PAT.");
+      }
+    });
+
+    document.getElementById("themeBtn").addEventListener("click", () => {
+      const themes = ["theme-calm", "theme-focus", "theme-alert"];
+      const current = document.body.className;
+      const idx = themes.indexOf(current);
+      document.body.className = themes[(idx + 1) % themes.length];
+      el("moodLabel").textContent = document.body.className.replace("theme-", "").replace(/^\w/, c => c.toUpperCase());
+    });
+
+    document.getElementById("recalcMood").addEventListener("click", async () => {
+      if (!GH_USER) return;
+      const agg = await aggregateAll(GH_USER);
+      applyMoodThemeFromAgg(agg);
+    });
+  </script>
+</body>
+</html>
